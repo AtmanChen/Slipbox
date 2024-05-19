@@ -15,19 +15,23 @@ struct FolderListLogic {
 	@ObservableState
 	struct State: Equatable {
 		@Shared(.inMemory("selectedFolder")) var selectedFolder: Folder?
+		@Shared(.inMemory("refreshLocation")) var refreshLocation: FolderLocation?
 		var folders: IdentifiedArrayOf<RecursiveFolderLogic.State> = []
 	}
 	
 	enum Action: BindableAction {
 		case binding(BindingAction<State>)
 		case createNewFolderButtonTapped
+		case fetchTopFolders
 		case folders(IdentifiedActionOf<RecursiveFolderLogic>)
+		case updateRefreshLocation(FolderLocation)
 		case onAppear
 		case updateFolders([Folder])
-		case updateSelectedFolder(Folder)
+		case updateSelectedFolder(Folder?)
 	}
 	
 	@Dependency(\.slipBoxClient) var slipBoxClient
+	
 	var body: some ReducerOf<Self> {
 		BindingReducer()
 		Reduce { state, action in
@@ -36,26 +40,55 @@ struct FolderListLogic {
 				return .none
 				
 			case .createNewFolderButtonTapped:
+				return .run { [selectedFolder = state.selectedFolder] send in
+					let folder = try slipBoxClient.addFolder("New Folder", selectedFolder)
+					@Shared(.inMemory("refreshLocation")) var refreshLocation: FolderLocation?
+					refreshLocation = selectedFolder == nil ? FolderLocation.root : FolderLocation.folder(folderId: selectedFolder!.uuid)
+//					await send(.updateSelectedFolder(folder))
+				}
+				
+			case .fetchTopFolders:
 				return .run { send in
-					let folder = try slipBoxClient.addFolder("New Folder")
-					await send(.updateSelectedFolder(folder))
+					let topFolders = try slipBoxClient.fetchTopFolders()
+					await send(.updateFolders(topFolders))
 				}
 				
 			case .folders:
 				return .none
 				
 			case .onAppear:
-				return .run { send in
-					let topFolders = try slipBoxClient.fetchTopFolders()
-					await send(.updateFolders(topFolders))
+				return .publisher {
+					state.$refreshLocation.publisher
+						.prepend(FolderLocation.root)
+						.filter { $0 == FolderLocation.root }
+						.receive(on: DispatchQueue.main)
+						.map { _ in Action.fetchTopFolders }
 				}
 				
 			case let .updateFolders(folders):
-				state.folders = IdentifiedArray(uniqueElements: folders.map(RecursiveFolderLogic.State.init(folder:)))
+				if folders.isEmpty {
+					state.folders.removeAll()
+				} else {
+					for folder in folders {
+						if state.folders[id: folder.uuid] == nil {
+							state.folders.append(RecursiveFolderLogic.State(folder: folder))
+						}
+					}
+				}
 				return .none
+				
+			case let .updateRefreshLocation(location):
+				switch location {
+				case .root:
+					return .none
+					
+				case let .folder(id):
+					return .none
+				}
 				
 			case let .updateSelectedFolder(folder):
 				state.selectedFolder = folder
+				debugPrint("update selectedFolder \(folder)")
 				return .none
 			}
 		}
@@ -89,8 +122,8 @@ struct FolderListView: View {
 		.onAppear {
 			store.send(.onAppear)
 		}
-		.onReceive(folders.publisher) { _ in
-			store.send(.onAppear)
+		.onReceive(folders.publisher) { param in
+//			store.send(.onAppear)
 		}
 	}
 }

@@ -13,7 +13,7 @@ struct SlipboxClient {
 	var fetchFolder: @Sendable (NSPredicate) throws -> [Folder]
 	var fetchNotes: @Sendable (NSPredicate) throws -> [Note]
 	var fetchNotesInFolder: @Sendable (Folder, Status?) throws -> [Note]
-	var addFolder: @Sendable (String) throws -> Folder
+	var addFolder: @Sendable (String, Folder?) throws -> Folder
 	var addNote: @Sendable (String, Folder) throws -> Note
 	var updateFolder: @Sendable (Folder, String) throws -> Folder
 	var deleteFolder: @Sendable (Folder) throws -> Void
@@ -43,9 +43,11 @@ extension SlipboxClient: DependencyKey {
 			let request = Note.fetch(for: folder, status: status)
 			return try context.fetch(request)
 		},
-		addFolder: { folderName in
+		addFolder: { folderName, parent in
+			@Dependency(\.uuid) var uuid
 			let context = PersistenceController.shared.container.viewContext
-			let folder = Folder(name: folderName, context: context)
+			let folder = Folder(id: uuid(), name: folderName, context: context)
+			folder.parent = parent
 			PersistenceController.shared.save()
 			return folder
 		},

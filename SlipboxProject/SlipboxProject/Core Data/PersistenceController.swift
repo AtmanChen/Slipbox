@@ -12,8 +12,11 @@ import Dependencies
 struct PersistenceController {
 	static let shared = PersistenceController()
 	let container: NSPersistentCloudKitContainer
-	private init(inMemory: Bool = false) {
+	private init(inMemory: Bool = false, destroy: Bool = false) {
 		container = NSPersistentCloudKitContainer(name: "Slipbox")
+		if destroy, let storURL = container.persistentStoreDescriptions.first?.url {
+			try? container.persistentStoreCoordinator.destroyPersistentStore(at: storURL, type: .sqlite)
+		}
 		if inMemory {
 			container.persistentStoreDescriptions.first!.url = URL(filePath: "/dev/null")
 		}
@@ -46,7 +49,7 @@ struct PersistenceController {
 			@Dependency(\.uuid) var uuid
 			let newNote = Note(id: uuid(), title: "note_\(index)", context: context)
 			newNote.creationDate_ = Date() + TimeInterval(index)
-			_ = Folder(name: "folder_\(index)", context: context)
+			_ = Folder(id: uuid(), name: "folder_\(index)", context: context)
 		}
 		return controller
 	}()

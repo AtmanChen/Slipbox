@@ -7,11 +7,24 @@
 
 import CoreData
 import Foundation
+import Dependencies
+import CasePaths
+
+@CasePathable
+enum FolderLocation: Equatable, Hashable {
+	case root
+	case folder(folderId: UUID)
+}
 
 extension Folder: Comparable {
 	public static func <(lhs: Folder, rhs: Folder) -> Bool {
 		lhs.creationDate < rhs.creationDate
 	}
+	
+	var uuid: UUID {
+		uuid_!
+	}
+	
 	var name: String {
 		get { name_ ?? "" }
 		set { name_ = newValue }
@@ -31,8 +44,9 @@ extension Folder: Comparable {
 		set { children_ = newValue as NSSet }
 	}
 
-	convenience init(name: String, context: NSManagedObjectContext) {
+	convenience init(id: UUID, name: String, context: NSManagedObjectContext) {
 		self.init(context: context)
+		self.uuid_ = id
 		self.name_ = name
 	}
 
@@ -65,10 +79,11 @@ extension Folder: Comparable {
 
 	#if DEBUG
 	static func nestedFolderExample(context: NSManagedObjectContext) -> Folder {
-		let parent = Folder(name: "parent", context: context)
-		let child1 = Folder(name: "child 1", context: context)
-		let child2 = Folder(name: "child 2", context: context)
-		let child3 = Folder(name: "child 3", context: context)
+		@Dependency(\.uuid) var uuid
+		let parent = Folder(id: uuid(), name: "parent", context: context)
+		let child1 = Folder(id: uuid(), name: "child 1", context: context)
+		let child2 = Folder(id: uuid(), name: "child 2", context: context)
+		let child3 = Folder(id: uuid(), name: "child 3", context: context)
 
 		parent.children.insert(child1)
 		parent.children.insert(child2)
@@ -78,7 +93,8 @@ extension Folder: Comparable {
 	}
 
 	static func exampleWithNotes(context: NSManagedObjectContext) -> Folder {
-		let folder = Folder(name: "my folder", context: context)
+		@Dependency(\.uuid) var uuid
+		let folder = Folder(id: uuid(), name: "my folder", context: context)
 
 		let notes = Note.exampleArray(context: context)
 		for note in notes {

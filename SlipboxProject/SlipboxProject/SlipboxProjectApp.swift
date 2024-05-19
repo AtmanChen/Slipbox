@@ -16,7 +16,7 @@ struct SlipboxProjectApp: App {
 	
 	init() {
 		store = Store(initialState: AppLogic.State()) {
-			AppLogic()._printChanges()
+			AppLogic()
 		}
 		persistenceController = .shared
 	}

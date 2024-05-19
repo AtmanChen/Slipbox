@@ -37,8 +37,8 @@ struct FolderRowLogic {
 		enum Field: Hashable {
 			case rename
 		}
-		var id: String {
-			folder.name
+		var id: UUID {
+			folder.uuid
 		}
 	}
 
@@ -82,8 +82,15 @@ struct FolderRowLogic {
 			case .destination(.presented(.deleteConfirmDialog(.confirmDelete))):
 				state.destination = nil
 				return .run { [folder = state.folder] _ in
+					let parentId: UUID?
+					if let parent = folder.parent {
+						parentId = parent.uuid
+					} else {
+						parentId = nil
+					}
 					try slipBoxClient.deleteFolder(folder)
-					await dismiss()
+					@Shared(.inMemory("refreshLocation")) var refreshLocation: FolderLocation?
+					refreshLocation = parentId == nil ? .root : .folder(folderId: parentId!)
 				}
 
 			case .destination:
@@ -99,7 +106,7 @@ struct FolderRowLogic {
 				
 			case .updateFolderName:
 				return .run { [folder = state.folder, updateName = state.name] send in
-					try slipBoxClient.updateFolder(folder, updateName)
+					_ = try slipBoxClient.updateFolder(folder, updateName)
 				}
 				
 			}

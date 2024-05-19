@@ -3,6 +3,7 @@
     <entity name="Folder" representedClassName="Folder" syncable="YES" codeGenerationType="class">
         <attribute name="creationDate_" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="name_" optional="YES" attributeType="String"/>
+        <attribute name="uuid_" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="children_" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Folder" inverseName="parent" inverseEntity="Folder"/>
         <relationship name="notes_" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Note" inverseName="folder" inverseEntity="Note"/>
         <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Folder" inverseName="children_" inverseEntity="Folder"/>
